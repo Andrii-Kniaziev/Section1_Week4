@@ -18,7 +18,7 @@ case class Leaf(char: Char, weight: Int) extends CodeTree
  * Assignment 4: Huffman coding
  *
  */
-trait Huffman extends HuffmanInterface:
+trait Huffman extends HuffmanInterface :
 
   // Part 1: Basics
   def weight(tree: CodeTree): Int = {
@@ -54,42 +54,32 @@ trait Huffman extends HuffmanInterface:
    * This function computes for each unique character in the list `chars` the number of
    * times it occurs. For example, the invocation
    *
-   *   times(List('a', 'b', 'a'))
+   * times(List('a', 'b', 'a'))
    *
    * should return the following (the order of the resulting list is not important):
    *
-   *   List(('a', 2), ('b', 1))
+   * List(('a', 2), ('b', 1))
    *
    * The type `List[(Char, Int)]` denotes a list of pairs, where each pair consists of a
    * character and an integer. Pairs can be constructed easily using parentheses:
    *
-   *   val pair: (Char, Int) = ('c', 1)
+   * val pair: (Char, Int) = ('c', 1)
    *
    * In order to access the two elements of a pair, you can use the accessors `_1` and `_2`:
    *
-   *   val theChar = pair._1
-   *   val theInt  = pair._2
+   * val theChar = pair._1
+   * val theInt  = pair._2
    *
    * Another way to deconstruct a pair is using pattern matching:
    *
-   *   pair match {
-   *     case (theChar, theInt) =>
-   *       println("character is: "+ theChar)
-   *       println("integer is  : "+ theInt)
-   *   }
+   * pair match {
+   * case (theChar, theInt) =>
+   * println("character is: "+ theChar)
+   * println("integer is  : "+ theInt)
+   * }
    */
   def times(chars: List[Char]): List[(Char, Int)] = {
-    def collect(list: List[(Char, Int)], p: (Char, Int)) = list ::: List(p)
-
-    var map: Map[Char, Int] = Map()
-    for (c <- chars)
-      if(!map.contains(c))
-        map += (c, chars.count(_ == c))
-
-    var list: List[(Char, Int)] = List()
-    for(p <- map) list = collect(list, p)
-
-    list
+    chars.toSet.map(sc => (sc, chars.count(_ == sc))).toList
   }
 
   /**
@@ -100,12 +90,7 @@ trait Huffman extends HuffmanInterface:
    * of a leaf is the frequency of the character.
    */
   def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
-    def collect(acc: List[Leaf], from: List[(Char, Int)]): List[Leaf] = {
-      if(from == Nil) acc
-      else collect(acc ::: List(new Leaf(from.head._1, from.head._2)), from.tail)
-    }
-
-    collect(Nil, freqs).sortWith((l1, l2) => l1.weight < l2.weight)
+    freqs.sortWith((p, p1) => p._2 < p1._2).map(tup => Leaf(tup._1, tup._2))
   }
 
   /**
@@ -128,7 +113,7 @@ trait Huffman extends HuffmanInterface:
   def combine(trees: List[CodeTree]): List[CodeTree] = {
     def findPlace(acc: List[CodeTree], ct: CodeTree, list: List[CodeTree]): List[CodeTree] = {
       if (list == Nil) acc ::: List(ct)
-      else if(weight(ct) < weight(list.head)) acc ::: List(ct) ::: list
+      else if (weight(ct) < weight(list.head)) acc ::: List(ct) ::: list
       else if (list.tail == Nil) acc ::: List(ct)
       else if (weight(list.head) < weight(ct) &&
         weight(ct) < weight(list.tail.head)) acc ::: List(list.head) ::: List(ct) ::: list.tail
@@ -142,7 +127,7 @@ trait Huffman extends HuffmanInterface:
   /**
    * This function will be called in the following way:
    *
-   *   until(singleton, combine)(trees)
+   * until(singleton, combine)(trees)
    *
    * where `trees` is of type `List[CodeTree]`, `singleton` and `combine` refer to
    * the two functions defined above.
@@ -152,13 +137,8 @@ trait Huffman extends HuffmanInterface:
    */
   def until(done: List[CodeTree] => Boolean, merge: List[CodeTree] => List[CodeTree])
            (trees: List[CodeTree]): List[CodeTree] = {
-
-    def recur(list: List[CodeTree]): List[CodeTree] = {
-      if(done(list)) list
-      else merge(list)
-    }
-
-    recur(trees)
+    if (done(trees)) trees
+    else merge(trees)
   }
 
   /**
@@ -186,7 +166,7 @@ trait Huffman extends HuffmanInterface:
     tree match {
       case Leaf(char, weight) => decodeAcc(root, bits, root, acc :+ char)
       case Fork(left, right, chars, weight) => bits match {
-        case List() => acc
+        case Nil => acc
         case x :: xs => x match {
           case 0 => decodeAcc(left, bits.tail, root, acc)
           case 1 => decodeAcc(right, bits.tail, root, acc)
@@ -197,21 +177,21 @@ trait Huffman extends HuffmanInterface:
 
 
   def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    decodeAcc(tree, bits, tree, List())
+    decodeAcc(tree, bits, tree, Nil)
   }
 
   /**
    * A Huffman coding tree for the French language.
    * Generated from the data given at
-   *   http://fr.wikipedia.org/wiki/Fr%C3%A9quence_d%27apparition_des_lettres_en_fran%C3%A7ais
+   * http://fr.wikipedia.org/wiki/Fr%C3%A9quence_d%27apparition_des_lettres_en_fran%C3%A7ais
    */
-  val frenchCode: CodeTree = Fork(Fork(Fork(Leaf('s',121895),Fork(Leaf('d',56269),Fork(Fork(Fork(Leaf('x',5928),Leaf('j',8351),List('x','j'),14279),Leaf('f',16351),List('x','j','f'),30630),Fork(Fork(Fork(Fork(Leaf('z',2093),Fork(Leaf('k',745),Leaf('w',1747),List('k','w'),2492),List('z','k','w'),4585),Leaf('y',4725),List('z','k','w','y'),9310),Leaf('h',11298),List('z','k','w','y','h'),20608),Leaf('q',20889),List('z','k','w','y','h','q'),41497),List('x','j','f','z','k','w','y','h','q'),72127),List('d','x','j','f','z','k','w','y','h','q'),128396),List('s','d','x','j','f','z','k','w','y','h','q'),250291),Fork(Fork(Leaf('o',82762),Leaf('l',83668),List('o','l'),166430),Fork(Fork(Leaf('m',45521),Leaf('p',46335),List('m','p'),91856),Leaf('u',96785),List('m','p','u'),188641),List('o','l','m','p','u'),355071),List('s','d','x','j','f','z','k','w','y','h','q','o','l','m','p','u'),605362),Fork(Fork(Fork(Leaf('r',100500),Fork(Leaf('c',50003),Fork(Leaf('v',24975),Fork(Leaf('g',13288),Leaf('b',13822),List('g','b'),27110),List('v','g','b'),52085),List('c','v','g','b'),102088),List('r','c','v','g','b'),202588),Fork(Leaf('n',108812),Leaf('t',111103),List('n','t'),219915),List('r','c','v','g','b','n','t'),422503),Fork(Leaf('e',225947),Fork(Leaf('i',115465),Leaf('a',117110),List('i','a'),232575),List('e','i','a'),458522),List('r','c','v','g','b','n','t','e','i','a'),881025),List('s','d','x','j','f','z','k','w','y','h','q','o','l','m','p','u','r','c','v','g','b','n','t','e','i','a'),1486387)
+  val frenchCode: CodeTree = Fork(Fork(Fork(Leaf('s', 121895), Fork(Leaf('d', 56269), Fork(Fork(Fork(Leaf('x', 5928), Leaf('j', 8351), List('x', 'j'), 14279), Leaf('f', 16351), List('x', 'j', 'f'), 30630), Fork(Fork(Fork(Fork(Leaf('z', 2093), Fork(Leaf('k', 745), Leaf('w', 1747), List('k', 'w'), 2492), List('z', 'k', 'w'), 4585), Leaf('y', 4725), List('z', 'k', 'w', 'y'), 9310), Leaf('h', 11298), List('z', 'k', 'w', 'y', 'h'), 20608), Leaf('q', 20889), List('z', 'k', 'w', 'y', 'h', 'q'), 41497), List('x', 'j', 'f', 'z', 'k', 'w', 'y', 'h', 'q'), 72127), List('d', 'x', 'j', 'f', 'z', 'k', 'w', 'y', 'h', 'q'), 128396), List('s', 'd', 'x', 'j', 'f', 'z', 'k', 'w', 'y', 'h', 'q'), 250291), Fork(Fork(Leaf('o', 82762), Leaf('l', 83668), List('o', 'l'), 166430), Fork(Fork(Leaf('m', 45521), Leaf('p', 46335), List('m', 'p'), 91856), Leaf('u', 96785), List('m', 'p', 'u'), 188641), List('o', 'l', 'm', 'p', 'u'), 355071), List('s', 'd', 'x', 'j', 'f', 'z', 'k', 'w', 'y', 'h', 'q', 'o', 'l', 'm', 'p', 'u'), 605362), Fork(Fork(Fork(Leaf('r', 100500), Fork(Leaf('c', 50003), Fork(Leaf('v', 24975), Fork(Leaf('g', 13288), Leaf('b', 13822), List('g', 'b'), 27110), List('v', 'g', 'b'), 52085), List('c', 'v', 'g', 'b'), 102088), List('r', 'c', 'v', 'g', 'b'), 202588), Fork(Leaf('n', 108812), Leaf('t', 111103), List('n', 't'), 219915), List('r', 'c', 'v', 'g', 'b', 'n', 't'), 422503), Fork(Leaf('e', 225947), Fork(Leaf('i', 115465), Leaf('a', 117110), List('i', 'a'), 232575), List('e', 'i', 'a'), 458522), List('r', 'c', 'v', 'g', 'b', 'n', 't', 'e', 'i', 'a'), 881025), List('s', 'd', 'x', 'j', 'f', 'z', 'k', 'w', 'y', 'h', 'q', 'o', 'l', 'm', 'p', 'u', 'r', 'c', 'v', 'g', 'b', 'n', 't', 'e', 'i', 'a'), 1486387)
 
   /**
    * What does the secret message say? Can you decode it?
    * For the decoding use the `frenchCode' Huffman tree defined above.
    */
-  val secret: List[Bit] = List(0,0,1,1,1,0,1,0,1,1,1,0,0,1,1,0,1,0,0,1,1,0,1,0,1,1,0,0,1,1,1,1,1,0,1,0,1,1,0,0,0,0,1,0,1,1,1,0,0,1,0,0,1,0,0,0,1,0,0,0,1,0,1)
+  val secret: List[Bit] = List(0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1)
 
   /**
    * Write a function that returns the decoded secret
@@ -240,7 +220,7 @@ trait Huffman extends HuffmanInterface:
   }
 
   def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
-    encodeAcc(tree, text, tree, List())
+    encodeAcc(tree, text, tree, Nil)
   }
 
   // Part 4b: Encoding using code table
@@ -271,7 +251,7 @@ trait Huffman extends HuffmanInterface:
         convertAcc(right, bits :+ 1, acc))
   }
 
-  def convert(tree: CodeTree): CodeTable = convertAcc(tree, List(), List())
+  def convert(tree: CodeTree): CodeTable = convertAcc(tree, Nil, Nil)
 
   /**
    * This function takes two code tables and merges them into one. Depending on how you
@@ -290,11 +270,12 @@ trait Huffman extends HuffmanInterface:
     val table = convert(tree)
 
     def quickEncodeAcc(text: List[Char], acc: List[Bit]): List[Bit] = text match {
-      case List() => acc
+      case Nil => acc
       case x :: xs => quickEncodeAcc(xs, acc ++ codeBits(table)(x))
     }
 
-    quickEncodeAcc(text, List())
+    quickEncodeAcc(text, Nil)
   }
 
 object Huffman extends Huffman
+
