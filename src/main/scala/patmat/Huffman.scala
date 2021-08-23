@@ -11,7 +11,9 @@ package patmat
  * leaves.
  */
 abstract class CodeTree
+
 case class Fork(left: CodeTree, right: CodeTree, chars: List[Char], weight: Int) extends CodeTree
+
 case class Leaf(char: Char, weight: Int) extends CodeTree
 
 /**
@@ -32,7 +34,7 @@ trait Huffman extends HuffmanInterface :
 
   def chars(tree: CodeTree): List[Char] = {
     def collect(acc: List[Char], t: CodeTree): List[Char] = t match {
-      case Fork(l, r, chars, w) => collect(acc, l).concat(collect(acc, r))
+      case Fork(l, r, chars, w) => collect(acc, l) ::: collect(acc, r)
       case Leaf(c, w) => List(c) ::: acc
     }
 
@@ -79,7 +81,9 @@ trait Huffman extends HuffmanInterface :
    * }
    */
   def times(chars: List[Char]): List[(Char, Int)] = {
-    chars.toSet.map(sc => (sc, chars.count(_ == sc))).toList
+    chars.toSet
+      .map(sc => (sc, chars.count(_ == sc)))
+      .toList
   }
 
   /**
@@ -90,7 +94,8 @@ trait Huffman extends HuffmanInterface :
    * of a leaf is the frequency of the character.
    */
   def makeOrderedLeafList(freqs: List[(Char, Int)]): List[Leaf] = {
-    freqs.sortWith((p, p1) => p._2 < p1._2).map(tup => Leaf(tup._1, tup._2))
+    freqs.sortWith((p, p1) => p._2 < p1._2)
+      .map(tup => Leaf(tup._1, tup._2))
   }
 
   /**
@@ -162,22 +167,17 @@ trait Huffman extends HuffmanInterface :
    * This function decodes the bit sequence `bits` using the code tree `tree` and returns
    * the resulting list of characters.
    */
-  def decodeAcc(tree: CodeTree, bits: List[Bit], root: CodeTree, acc: List[Char]): List[Char] = {
-    tree match {
-      case Leaf(char, weight) => decodeAcc(root, bits, root, acc :+ char)
-      case Fork(left, right, chars, weight) => bits match {
-        case Nil => acc
-        case x :: xs => x match {
-          case 0 => decodeAcc(left, bits.tail, root, acc)
-          case 1 => decodeAcc(right, bits.tail, root, acc)
-        }
+  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
+    def accumul(acc: List[Char], bits: List[Bit], itree: CodeTree): List[Char] = itree match {
+      case Leaf(c, w) => accumul(acc ::: List(c), bits, tree)
+      case Fork(l, r, crs, w) => {
+        if (bits.isEmpty) acc
+        else if (bits.head == 0) accumul(acc, bits.tail, l)
+        else accumul(acc, bits.tail, r)
       }
     }
-  }
 
-
-  def decode(tree: CodeTree, bits: List[Bit]): List[Char] = {
-    decodeAcc(tree, bits, tree, Nil)
+    accumul(Nil, bits, tree)
   }
 
   /**
@@ -207,20 +207,17 @@ trait Huffman extends HuffmanInterface :
    * This function encodes `text` using the code tree `tree`
    * into a sequence of bits.
    */
-
-  def encodeAcc(tree: CodeTree, text: List[Char], root: CodeTree, acc: List[Bit]): List[Bit] = {
-    if (text.isEmpty) acc
-    else tree match {
-      case Leaf(char, weight) => encodeAcc(root, text.tail, root, acc)
-      case Fork(left, right, cc, weight) => {
-        if (chars(left).contains(text.head)) encodeAcc(left, text, root, acc :+ 0)
-        else encodeAcc(right, text, root, acc :+ 1)
+  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
+    def accumul(acc: List[Bit], itree: CodeTree, text: List[Char]): List[Bit] = itree match {
+      case Leaf(c, w) => accumul(acc, tree, text.tail)
+      case Fork(l, r, c, w) => {
+        if (text.isEmpty) acc
+        else if (chars(l).contains(text.head)) accumul(acc ::: List(0), l, text)
+        else accumul(acc ::: List(1), r, text)
       }
     }
-  }
 
-  def encode(tree: CodeTree)(text: List[Char]): List[Bit] = {
-    encodeAcc(tree, text, tree, Nil)
+    accumul(Nil, tree, text)
   }
 
   // Part 4b: Encoding using code table
@@ -243,15 +240,9 @@ trait Huffman extends HuffmanInterface :
    * a valid code tree that can be represented as a code table. Using the code tables of the
    * sub-trees, think of how to build the code table for the entire tree.
    */
-  def convertAcc(tree: CodeTree, bits: List[Bit], acc: CodeTable): CodeTable = tree match {
-    case Leaf(char, weight) => (char, bits) :: acc
-    case Fork(left, right, chars, weight) =>
-      mergeCodeTables(
-        convertAcc(left, bits :+ 0, acc),
-        convertAcc(right, bits :+ 1, acc))
+  def convert(tree: CodeTree): CodeTable = {
+    for (c <- chars(tree)) yield (c, encode(tree)(List(c)))
   }
-
-  def convert(tree: CodeTree): CodeTable = convertAcc(tree, Nil, Nil)
 
   /**
    * This function takes two code tables and merges them into one. Depending on how you
@@ -271,7 +262,7 @@ trait Huffman extends HuffmanInterface :
 
     def quickEncodeAcc(text: List[Char], acc: List[Bit]): List[Bit] = text match {
       case Nil => acc
-      case x :: xs => quickEncodeAcc(xs, acc ++ codeBits(table)(x))
+      case x :: xs => quickEncodeAcc(xs, acc ::: codeBits(table)(x))
     }
 
     quickEncodeAcc(text, Nil)
